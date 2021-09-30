@@ -188,6 +188,7 @@ UPROGS=\
 	$U/_mkdir\
 	$U/_rm\
 	$U/_sh\
+	$U/_sleep\
 	$U/_stressfs\
 	$U/_usertests\
 	$U/_grind\
@@ -306,7 +307,6 @@ qemu: $K/kernel fs.img
 
 qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
-	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
 ifeq ($(LAB),net)
 # try to generate a unique port for the echo server
@@ -407,3 +407,5 @@ myapi.key:
 
 
 .PHONY: handin tarball tarball-pref clean grade handin-check
+
+# To compile and run with a lab solution, set the lab name in lab.mk
