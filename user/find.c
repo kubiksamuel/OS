@@ -19,8 +19,7 @@ find(char *path, char *file_name)
   }
   if(fstat(fd, &st) <  0){
     fprintf(2, "find: cannot stat %s\n", path);
-    close(fd);
-    return;
+    exit(1);
   }
 
   switch(st.type)
