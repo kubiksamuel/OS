@@ -109,3 +109,21 @@ sys_trace(void)
   return 0;
 }
 
+//fill struct sysinfo
+uint64
+sys_sysinfo(void)
+{
+  uint64 addr;
+  struct sysinfo s_info;
+  struct proc *p = myproc();
+
+  if(argaddr(0, &addr) < 0)
+    return -1;
+  //set values of struct's variables
+  s_info.nproc = nproc();
+  s_info.freemem = freemem();
+  //check if data was successfully send to user
+  if(copyout(p->pagetable, addr, (char *)&s_info, sizeof(s_info)) < 0)
+    return -1;
+  return 0;
+}
