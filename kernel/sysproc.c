@@ -77,10 +77,40 @@ sys_sleep(void)
 
 
 #ifdef LAB_PGTBL
-int
+uint64
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  //address of page
+  uint64 start;
+  //number of pages to check
+  int npages;
+  uint64 bitmask_user_address;
+
+  uint64 bitmask_kernel = 0;
+
+  if(argaddr(0, &start) < 0)
+    return -1;
+  if(argint(1, &npages) < 0)
+    return -1;
+  if(argaddr(2, &bitmask_user_address) < 0)
+    return -1;
+  //check validity of arguments
+  if(npages > sizeof(int) * 8)
+    npages = sizeof(int) * 8;
+
+  for(int i = 0; i < npages; i++){
+    pte_t *pte = walk(myproc()->pagetable, start, 0);
+    //check if mapping for va exists
+    //and if pte was accessed
+    if(pte != 0 && *pte & PTE_A){
+      bitmask_kernel |= 1 << i;
+      *pte &= ~PTE_A;
+    }
+    start += PGSIZE;
+  }
+  //send bitmask from kernel to user
+  if(copyout(myproc()->pagetable, bitmask_user_address, (char *) &bitmask_kernel, (npages+7)/8))
+    return -1;
   return 0;
 }
 #endif
