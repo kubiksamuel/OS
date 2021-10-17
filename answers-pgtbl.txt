@@ -1,0 +1,2 @@
+page 0 contains the code of init program, page 2 is the stack of this process and 3rd page from the end is USYSCALL
+When process is running in user mode, it's not allowed to read/write the memory mapped by page 1
