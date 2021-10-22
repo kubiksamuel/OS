@@ -1,0 +1,15 @@
+1. Registers a0-a7 contains arguments of functions, number 13 is saved in a2
+
+2. We can observe in C that main() calls function f() and f() calls function g().
+In the user/call.asm compiler makes optimalization - inlines function. It means the compiler substitutes the
+function itself for the call of the function. So there is no calls.
+
+3. 0x638
+
+4. 0x38
+
+5.output: He110 World
+If architecture is big-endian then i = 0x726c6400
+There is no need to change value 57616
+
+6.In assembly of printf, second parameter is the content of register a2.
