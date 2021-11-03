@@ -403,7 +403,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     }
     if(*pte & PTE_COW){
       if(uvmcow(pagetable, va0) != 0){
-	panic("umcow");
+	panic("uvmcow");
       }
     }
     pa0 = walkaddr(pagetable, va0);

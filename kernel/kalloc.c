@@ -40,7 +40,6 @@ kinit()
 
   initlock(&kmem.lock, "kmem");
   freerange(kmem.cntref+frames, (void*)PHYSTOP);
-  //  freerange(end, (void*)PHYSTOP);
 }
 
 void
@@ -132,6 +131,7 @@ inc_ref(uint64 pa)
 
 //return number of references at frame
 uint64
-get_cnt(uint64 pa){
+get_cnt(uint64 pa)
+{
   return kmem.cntref[PA2IND(pa)];
 }
