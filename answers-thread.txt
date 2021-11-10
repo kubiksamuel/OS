@@ -1,0 +1,2 @@
+Because they can access to table[i] of key-value at the same time, and then one of these items which are adding 
+could be lost .
