@@ -499,6 +499,7 @@ munmap(uint64 addr,int len)
     // Case No.1
     vma->len -= (unmap_end - unmap_start);
     vma->address = unmap_end;
+    vma->offset += (unmap_end - unmap_start);
   } else if (unmap_start > vma->address){
     // Case No.2
     vma->len -= (unmap_end - unmap_start); 

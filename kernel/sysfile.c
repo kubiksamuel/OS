@@ -518,6 +518,7 @@ sys_mmap(void)
     return -1;
   
   //set vma data
+  vma->offset = offset;
   vma->address = start;
   vma->end = current_end;
   vma->len = length;
