@@ -155,7 +155,6 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
       return -1;
     if(*pte & PTE_V)
       panic("mappages: remap");
-    //printf("PARKRAT SA VYKONAM.");
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -378,7 +377,6 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
-#include "fs.h"
   uint64 n, va0, pa0;
 
   while(len > 0){
