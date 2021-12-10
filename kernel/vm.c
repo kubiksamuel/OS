@@ -5,6 +5,11 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
+#include "sleeplock.h"
+#include "file.h"
+#include "fcntl.h"
 
 /*
  * the kernel's page table.
@@ -150,6 +155,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
       return -1;
     if(*pte & PTE_V)
       panic("mappages: remap");
+    //printf("PARKRAT SA VYKONAM.");
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -275,7 +281,8 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      panic("freewalk: leaf");
+      continue;
+      //panic("freewalk: leaf");
     }
   }
   kfree((void*)pagetable);
@@ -371,6 +378,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
+#include "fs.h"
   uint64 n, va0, pa0;
 
   while(len > 0){
@@ -432,3 +440,78 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+struct vma *
+find_empty_vma(struct proc *p)
+{
+  for(int i = 0; i < VMA_NUM; i++) {
+    if(p->vma[i].f == 0){
+      return p->vma + i;
+    }
+  }
+  return 0;
+}
+
+struct vma *
+search_vma(struct proc *p, uint64 addr)
+{
+  for(int i = 0; i < VMA_NUM; i++) {
+    if(p->vma[i].f != 0)
+      if(addr >= p->vma[i].address && addr < p->vma[i].end)
+	return p->vma + i;
+  }
+  return 0;
+}
+
+// unmap vma from start to end
+void unmap_vma(pagetable_t pagetable, uint64 start, uint64 end)
+{
+  pte_t *pte;
+  if((pte = walk(pagetable, start, 0)) == 0 && (*pte & PTE_V)) { 
+    uvmunmap(pagetable, start, end-start/PGSIZE, 0);
+  }
+}
+
+// unmap vma and change data according to case
+uint64 
+munmap(uint64 addr,int len)
+{
+  /* Three cases:
+  * 1) unmap pages from the beginning (change address)
+  * 2) unmap pages from the end (change length)
+  * 3) unmap whole file */
+
+  uint64 unmap_start = PGROUNDDOWN(addr);
+  uint64 unmap_end = PGROUNDDOWN(addr + len);
+
+  struct proc *p = myproc();
+  struct vma *vma = search_vma(p, unmap_start);
+
+  if (vma == 0) {
+    return -1;
+  }
+
+  if (vma->flags == MAP_SHARED) {
+    filewrite(vma->f, vma->address, vma->len);
+  }
+  
+  unmap_vma(p->pagetable, unmap_start, unmap_end);
+
+  if (unmap_end < vma->end) {
+    // Case No.1
+    vma->len -= (unmap_end - unmap_start);
+    vma->address = unmap_end;
+  } else if (unmap_start > vma->address){
+    // Case No.2
+    vma->len -= (unmap_end - unmap_start); 
+    vma->end = unmap_start;
+  } else if (vma->address == unmap_start && vma->end == unmap_end) {
+    // Case No.3
+    fileclose(vma->f);
+    vma->f = 0;
+    vma->len = 0;
+  }
+
+  return 0;
+}
+

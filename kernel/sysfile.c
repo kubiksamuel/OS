@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "memlayout.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -484,3 +485,63 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_mmap(void)
+{
+  uint64 addr;
+  int length, prot, flags, fd, offset;
+
+  struct proc *p = myproc();
+
+  if(argaddr(0, &addr) == -1)
+    return -1;
+  if(argint(1, &length) == -1)
+    return -1;
+  if(argint(2, &prot) == -1)
+    return -1;
+  if(argint(3, &flags) == -1)
+    return -1;
+  if(argint(4, &fd) == -1)
+    return -1;
+  if(argint(5, &offset) == -1)
+    return -1;
+
+  if((flags & MAP_SHARED) && !myproc()->ofile[fd]->writable && (prot & PROT_WRITE))
+    return -1;
+
+  uint64 current_end = p->current_end;
+  uint64 start = PGROUNDDOWN(current_end - length);
+
+  struct vma  *vma = find_empty_vma(p);
+  if(vma == 0)
+    return -1;
+  
+  //set vma data
+  vma->address = start;
+  vma->end = current_end;
+  vma->len = length;
+  vma->prot = prot;
+  vma->flags = flags;
+  vma->f = p->ofile[fd];
+  // file refferences + 1
+  filedup(vma->f);
+  // move current_max lower
+  p->current_end = start;
+  return start;
+}
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  int length;
+
+  if(argaddr(0, &addr) == -1)
+    return -1;
+  if(argint(1, &length) == -1)
+    return -1;
+
+  return munmap(addr, length);
+}
+

@@ -141,6 +141,8 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  p->current_end = MMAP;
+
   return p;
 }
 
@@ -302,6 +304,26 @@ fork(void)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
+  
+  //copy parent's array of vmas to child 
+  memmove(&np->vma, &p->vma, sizeof(struct vma));
+  for (int i = 0; i < VMA_NUM; i++) {
+    if (p->vma[i].f != 0) {
+      struct vma *vma_parrent = 0;
+      vma_parrent = &p->vma[i];
+      struct vma *vma_child = 0;
+      for (int j = 0; j < VMA_NUM; j++) {
+        if (np->vma[j].f == 0) {
+          vma_child = &np->vma[j];
+          break;
+        }
+      }
+      if (vma_child) {
+      // copy parent's vma to child
+      memmove(vma_child, vma_parrent, sizeof(struct vma));
+      }
+    }
+  }
 
   pid = np->pid;
 
@@ -352,6 +374,19 @@ exit(int status)
       p->ofile[fd] = 0;
     }
   }
+
+  // unmap all vmas
+  struct vma *vma = 0;
+  for (int i = 0; i < VMA_NUM; i++) {
+    if (p->vma[i].f != 0) {
+      vma = &p->vma[i];
+      vma->f = 0;
+      vma->len = 0;
+      unmap_vma(p->pagetable, vma->address,vma->end);
+    }
+  }
+
+  p->current_end = MMAP;
 
   begin_op();
   iput(p->cwd);
