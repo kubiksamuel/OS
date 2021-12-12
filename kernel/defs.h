@@ -173,7 +173,6 @@ int             copyinstr(pagetable_t, char *, uint64, uint64);
 struct vma *	find_empty_vma(struct proc *p);
 struct vma *	search_vma(struct proc *p, uint64 addr);
 uint64		munmap(uint64, int);
-void 		unmap_vma(pagetable_t pagetable, uint64 start, uint64 end);
 
 // plic.c
 void            plicinit(void);

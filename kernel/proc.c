@@ -397,11 +397,12 @@ exit(int status)
 	}
 	uvmunmap(p->pagetable, PGROUNDDOWN(unmap_start + j), 1, 1);
       }
-    // move vma address 
-    vma->address += unmap_len;
-    vma->len -= unmap_len;
-    vma->offset += unmap_len;
+      // move vma address 
+      vma->address += unmap_len;
+      vma->len -= unmap_len;
+      vma->offset += unmap_len;
     }
+    vma->f = 0;
   }
   //reset starting va for vma in current process (MAXVA - 2*PGSIZE)
   p->current_end = MMAP;
