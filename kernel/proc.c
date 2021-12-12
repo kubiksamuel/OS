@@ -5,6 +5,10 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fcntl.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct cpu cpus[NCPU];
 
@@ -376,16 +380,30 @@ exit(int status)
   }
 
   // unmap all vmas
-  struct vma *vma = 0;
-  for (int i = 0; i < VMA_NUM; i++) {
-    if (p->vma[i].f != 0) {
-      vma = &p->vma[i];
-      vma->f = 0;
-      vma->len = 0;
-      unmap_vma(p->pagetable, vma->address,vma->end);
+  for(int i = 0;  i < VMA_NUM; i++){
+    struct vma *vma = &p->vma[i];
+    uint64 unmap_start = vma->address;
+    int unmap_len = vma->len;
+    for(int j = 0; j < unmap_len; j+= PGSIZE){
+      if(walkaddr(p->pagetable, unmap_start + j) != 0 ) {
+	if(vma->flags & MAP_SHARED) {
+	  // write to file
+	  int offset = PGROUNDDOWN(unmap_start+j) - (vma->address + vma->offset);
+	  begin_op();
+	  ilock(vma->f->ip);
+	  writei(vma->f->ip, 1, PGROUNDDOWN(unmap_start+j), offset, PGSIZE);
+	  iunlock(vma->f->ip);
+	  end_op();
+	}
+	uvmunmap(p->pagetable, PGROUNDDOWN(unmap_start + j), 1, 1);
+      }
+    // move vma address 
+    vma->address += unmap_len;
+    vma->len -= unmap_len;
+    vma->offset += unmap_len;
     }
   }
-
+  //reset starting va for vma in current process (MAXVA - 2*PGSIZE)
   p->current_end = MMAP;
 
   begin_op();

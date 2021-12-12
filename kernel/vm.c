@@ -280,8 +280,7 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      continue;
-      //panic("freewalk: leaf");
+      panic("freewalk: leaf");
     }
   }
   kfree((void*)pagetable);
@@ -461,17 +460,8 @@ search_vma(struct proc *p, uint64 addr)
   return 0;
 }
 
-// unmap vma from start to end
-void unmap_vma(pagetable_t pagetable, uint64 start, uint64 end)
-{
-  pte_t *pte;
-  if((pte = walk(pagetable, start, 0)) == 0 && (*pte & PTE_V)) { 
-    uvmunmap(pagetable, start, end-start/PGSIZE, 0);
-  }
-}
-
 // unmap vma and change data according to case
-uint64 
+uint64
 munmap(uint64 addr,int len)
 {
   /* Three cases:
@@ -489,12 +479,22 @@ munmap(uint64 addr,int len)
     return -1;
   }
 
-  if (vma->flags == MAP_SHARED) {
-    filewrite(vma->f, vma->address, vma->len);
+  // write back to file and unmap
+  for(int i = 0; i < unmap_end - unmap_start; i += PGSIZE){
+    if(walkaddr(p->pagetable, unmap_start + i) != 0) {
+      if(vma->flags & MAP_SHARED) {
+	int offset = PGROUNDDOWN(unmap_start+i) - (vma->address + vma->offset);
+	begin_op();
+	ilock(vma->f->ip);
+	writei(vma->f->ip, 1, PGROUNDDOWN(unmap_start+i), offset, PGSIZE);
+	iunlock(vma->f->ip);
+	end_op();
+      }
+      uvmunmap(p->pagetable, PGROUNDDOWN(unmap_start + i), 1, 1);
+    }
   }
-  
-  unmap_vma(p->pagetable, unmap_start, unmap_end);
 
+  //modify vma data due to unmapping
   if (unmap_end < vma->end) {
     // Case No.1
     vma->len -= (unmap_end - unmap_start);
