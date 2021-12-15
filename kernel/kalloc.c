@@ -69,18 +69,20 @@ kfree(void *pa)
 
 //Steal page from other CPUS.
 void *
-kalloc_steal(struct run *r)
+kalloc_steal(struct run *r, int cpu_id)
 {
   for(int i = 0; i < NCPU; i++) {
-    acquire(&kmems[i].lock);
-    r = kmems[i].freelist;
-    if(r)
-      kmems[i].freelist = r->next;
-    release(&kmems[i].lock);
-    if(r)
-      break;
+    if(i != cpu_id) {
+      acquire(&kmems[i].lock);
+      r = kmems[i].freelist;
+      if(r)
+	kmems[i].freelist = r->next;
+      release(&kmems[i].lock);
+      if(r)
+	break;
+    }
   }
-    return (void*)r;
+  return (void*)r;
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -101,7 +103,7 @@ kalloc(void)
   release(&kmems[id].lock);
 
   if(!r) {
-    r = kalloc_steal(r);
+    r = kalloc_steal(r, id);
   }
 
   pop_off();
